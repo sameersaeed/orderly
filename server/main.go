@@ -1,24 +1,19 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	"log"
 	"net/http"
 	"os"
 
-	"order_submission_tool/bot"
+	"order_submission_tool/handlers"
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-type FormData struct {
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Message string `json:"message"`
-}
 
 func main() {
 	err := godotenv.Load("../client/.env")
@@ -26,42 +21,32 @@ func main() {
 		log.Fatal("ERROR: could not fetch env vars from .env file - please make sure the path is correct")
 	}
 
-	log.Printf("server is now running on: %s:%s\n", os.Getenv("HOST_URL"), os.Getenv("HOST_PORT"))
-
-	err = bot.Start()
+	clientOptions := options.Client().ApplyURI(os.Getenv("MONGODB_URL"))
+	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		log.Fatalf("ERROR: could not start bot: %v", err)
+		log.Fatalf("ERROR: could not connect to MongoDB: %v", err)
 	}
 
+	err = client.Ping(context.TODO(), nil)
+	if err != nil {
+		log.Fatalf("ERROR: could not connect to MongoDB: %v", err)
+	}
+
+	db := client.Database("shop")
+	handlers.SetDatabase(db)
+
+	log.Printf("server is now running on: %s:%s\n", os.Getenv("HOST_URL"), os.Getenv("SERVER_PORT"))
+
 	router := mux.NewRouter()
-	router.HandleFunc("/send", sendHandler).Methods("POST")
+	router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
+    router.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{os.Getenv("HOST_URL") + ":" + os.Getenv("HOST_PORT")},
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowCredentials: true,
 	})
 
 	handler := c.Handler(router)
 	log.Fatal(http.ListenAndServe(":3001", handler))
-}
-
-func sendHandler(w http.ResponseWriter, r *http.Request) {
-	var data FormData
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	message := fmt.Sprintf("A new order has been received!\nName: %s\nEmail: %s\nOrder details: %s", data.Name, data.Email, data.Message)
-
-	err = bot.SendMessage(message)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Order was sent to Discord channel" + os.Getenv("DISCORD_CHANNEL_ID") + "successfully!")
 }
