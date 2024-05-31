@@ -50,7 +50,7 @@ const Shop: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout })
         message,
         cart
       });
-      alert('Your order was been sent successfully!');
+      alert('Your order has successfully been sent for processing!');
     } catch (error) {
       console.error('ERROR: could not send order:', error);
       alert('ERROR: There was an issue sending your order. Please try again');
