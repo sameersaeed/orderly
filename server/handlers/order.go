@@ -85,9 +85,9 @@ func SendOrderHandler(w http.ResponseWriter, r *http.Request) {
         }
         orderDetails += fmt.Sprintf("%s: %d\n", itemDetails.Name, item.Quantity)
     }
-    fullMessage := fmt.Sprintf("A new order has been received!\nEmail: %s\nMessage: %s\n\nOrder Details:\n%s", order.Email, order.Message, orderDetails)
+    newOrder := fmt.Sprintf("A new order has been received!\nEmail: %s\nMessage: %s\n\nOrder Details:\n%s", order.Email, order.Message, orderDetails)
 
-    err = bot.SendMessage(fullMessage)
+    err = bot.SendMessage(newOrder)
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return

@@ -49,12 +49,12 @@ func main() {
 
     router.HandleFunc("/getItems", handlers.GetItemsHandler).Methods("GET")
     router.HandleFunc("/createItem", handlers.CreateItemHandler).Methods("POST")
-    router.HandleFunc("/editItem", handlers.EditItemHandler).Methods("POST")
+    router.HandleFunc("/editItem", handlers.EditItemHandler).Methods("PUT")
     router.HandleFunc("/deleteItem", handlers.DeleteItemHandler).Methods("DELETE")
     
     c := cors.New(cors.Options{
         AllowedOrigins:   []string{ os.Getenv("HOST_URL") + ":" + os.Getenv("HOST_PORT") },
-        AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
+        AllowedMethods:   []string{"DELETE", "GET", "OPTIONS", "POST", "PUT"},
         AllowedHeaders:   []string{"Authorization", "Content-Type"},
         AllowCredentials: true,
     })

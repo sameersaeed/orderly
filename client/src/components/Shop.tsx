@@ -6,10 +6,10 @@ import axios from 'axios';
 import * as toastr from 'toastr';
 
 interface Item {
-  _id: string;
-  Name: string;
-  Description: string;
-  Price: number;
+  id: string;
+  name: string;
+  description: string;
+  price: number;
 }
 
 const Shop: React.FC<{ user: any }> = ({ user }) => {
@@ -19,16 +19,25 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
   const [editingItem, setEditingItem] = useState<Item>();
 
   useEffect(() => {
+    switch (sessionStorage.getItem('itemActionPerformed')) {
+      case 'edit':
+        toastr.success('Item was updated successfully!');
+        sessionStorage.removeItem('itemActionPerformed');
+        break;
+      case 'create':
+        toastr.success('Item was created successfully!');
+        sessionStorage.removeItem('itemActionPerformed');
+        break;
+      default:
+        break;
+    }
+    
     const fetchItems = async () => {
       try {
         const response = await axios.get<Item[]>(`${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/getItems`, {
           headers: { Authorization: `Bearer ${user.Token}` }
         });
-        const formattedItems = response.data.map(item => ({
-          ...item,
-
-        }));
-        setItems(formattedItems);
+        setItems(response.data);
       } 
       catch (error) {
         console.error('ERROR: could not fetch items:', error);
@@ -44,12 +53,12 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
     setCart([...cart, item]);
   };
 
-  const removeCartItem = async (ID: string) => {
+  const removeCartItem = async (id: string) => {
     try {
-      await axios.delete(`/items/${ID}`, {
+      await axios.delete(`/items/${id}`, {
         headers: { Authorization: `Bearer ${user.Token}` }
       });
-      setItems(items.filter(item => item._id !== ID));
+      setItems(items.filter(item => item.id !== id));
     } 
     catch (error) {
       console.error('ERROR: could not remove item from cart:', error);
@@ -58,14 +67,15 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
 
   const handleSubmit = async () => {
     try {
-      const orderDetails = cart.map(item => `${item.Name}: ${item.Price}`).join('\n');
+      const orderDetails = cart.map(item => `${item.name}: ${item.price}`).join('\n');
       const message = `Order details:\n${orderDetails}`;
       await axios.post('/send', {
-        name: user.Name,
+        name: user.name,
         email: user.Email,
         message,
         cart
       });
+
       toastr.success('Your order has successfully been sent for processing!');
     } 
     catch (error) {
@@ -76,10 +86,10 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
 
   const handleAddItem = async () => {
     const newItem: Item = {
-      _id: '',
-      Name: 'Item name',
-      Description: 'Enter a short item description here',
-      Price: 0,
+      id: '',
+      name: 'Item name',
+      description: 'Enter a short item description here',
+      price: 0.00,
     };
   
     try {
@@ -90,8 +100,14 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
           headers: { Authorization: `Bearer ${user.Token}` }
         }
       );
-      setItems([...items, response.data]);
-      toastr.success('New item added successfully!');
+
+      // add to items array if other items exist, otherwise create a new array
+      (Array.isArray(items)) 
+        ? setItems([...items, response.data]) 
+        : setItems([response.data]);
+
+        window.location.reload();
+        sessionStorage.setItem('itemActionPerformed', 'create');
     } 
     catch (error) {
       console.error('ERROR: could not add new item:', error);
@@ -104,33 +120,46 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
     setShowModal(true);
   };
 
-  const handleDeleteItem = async (itemID: string) => {
-    try {
-      await axios.delete(`/items/${itemID}`, {
-        headers: { Authorization: `Bearer ${user.Token}` }
-      });
-      setItems(items.filter(item => item._id !== itemID));
-      toastr.success('Item deleted successfully!');
-    } catch (error) {
-      console.error('ERROR: could not delete item:', error);
-      toastr.error('ERROR: There was an issue with deleting the item, please try again');
-    }
-  };
-  
-  const handleEditItem = async (editedItem: Item) => {
-    if (editedItem) {
+  const handleEditItem = async (item: Item) => {
+    if (item.id) {
       try {
-        await axios.put(`${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/editItem/${editedItem._id}`, editedItem, {
-          headers: { Authorization: `Bearer ${user.Token}` }
-        });
-        setItems(items.map(item => (item._id === editedItem._id ? editedItem : item))); 
+        const response = await axios.put(
+          `${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/editItem`,
+          item,
+          {
+            headers: { Authorization: `Bearer ${user.Token}` },
+          }
+        );
+
+        setItems(items.map(item => item.id === editingItem?.id ? item : item));
         setShowModal(false);
-        toastr.success('Item was updated successfully!');
+
+        window.location.reload();
+        sessionStorage.setItem('itemActionPerformed', 'edit');
       } 
       catch (error) {
         console.error('ERROR: could not edit item:', error);
         toastr.error('ERROR: There was an issue with editing the item, please try again');
       }
+    }
+    else {
+      toastr.error('ERROR: Could not edit item, no item ID was found');
+    }
+  };
+
+  const handleDeleteItem = async (itemID: string) => {
+    try {
+      await axios.delete(`${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/deleteItem`, {
+        data: { id: itemID },
+        headers: { Authorization: `Bearer ${user.Token}` }
+      });
+
+      setItems(items.filter(item => item.id !== itemID));
+      toastr.success('Item deleted successfully!');
+    } 
+    catch (error) {
+      console.error('ERROR: could not delete item:', error);
+      toastr.error('ERROR: There was an issue with deleting the item, please try again');
     }
   };
   
@@ -138,24 +167,23 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
     <div className="container mt-5">
       <h2>Items</h2>
       <div className="row">
-        {items.map(item => (
-          <div key={item._id} className="col-md-4">
+        {items?.map((item: Item) => (
+          <div key={item.id} className="col-md-4">
             <div className="card mb-4 bg-dark text-light">
               {user.IsAdmin && (
                 <div className="position-absolute top-0 end-0">
-                  <button className="btn btn-danger btn-sm me-2" onClick={() => handleDeleteItem(item._id)}>
+                  <button className="btn btn-danger btn-sm me-2" onClick={() => handleDeleteItem(item.id)}>
                     <FontAwesomeIcon icon={faTrashAlt} />
                   </button>
                   <button className="btn btn-info btn-sm" onClick={() => editItem(item)}>
                     <FontAwesomeIcon icon={faEdit} />
                   </button>
-                  {showModal && <ItemModal onClose={() => setShowModal(false)} onSave={editingItem ? handleEditItem : handleAddItem} item={editingItem} />}
                 </div>
               )}
               <div className="card-body">
-                <h5 className="card-title">{item.Name}</h5>
-                <p className="card-text">{item.Description}</p>
-                <p className="card-text">Price: ${item.Price}</p>
+                <h5 className="card-title">{item.name}</h5>
+                <p className="card-text">{item.description}</p>
+                <p className="card-text">Price: ${item.price}</p>
                 <button className="btn btn-primary" onClick={() => addToCart(item)}>
                   <FontAwesomeIcon icon={faShoppingCart} /> Add to Cart
                 </button>
@@ -165,21 +193,19 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
         ))}
       </div>
       {user.IsAdmin && (
-        <>
-          <button className="btn btn-success mt-3" onClick={() => setShowModal(true)}>
-            Create a new item
-          </button>
-          {showModal && <ItemModal onClose={() => setShowModal(false)} onSave={handleAddItem} />}
-        </>
+        <button className="btn btn-success mt-3" onClick={() => setShowModal(true)}>
+          Create a new item
+        </button>
       )}
+      {showModal && <ItemModal onClose={() => setShowModal(false)} onSave={editingItem ? handleEditItem : handleAddItem} item={editingItem || { id: '', name: '', description: '', price: 0 }} />}
       {cart.length > 0 && (
         <div className="mt-4">
           <h3>Cart</h3>
           <ul className="list-group">
             {cart.map(item => (
-              <li key={item._id} className="list-group-item d-flex justify-content-between align-items-center">
-                {item.Name}
-                <button className="btn btn-danger btn-sm" onClick={() => removeCartItem(item._id)}>
+              <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
+                {item.name}
+                <button className="btn btn-danger btn-sm" onClick={() => removeCartItem(item.id)}>
                   Remove
                 </button>
               </li>
@@ -192,6 +218,6 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
       )}
     </div>
   );
-};
+}
 
 export default Shop;
