@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Home from './Home';
 import Login from './Login';
+import Navbar from './Navbar';
+import Orders from './Orders';
 import Register from './Register';
 import Shop from './Shop';
-import Navbar from './Navbar';
-import * as toastr from 'toastr';
-import 'toastr/build/toastr.min.css';
 import './../styles/App.css';
 
 const App: React.FC = () => {
@@ -55,6 +54,10 @@ const App: React.FC = () => {
           <Route
             path="/shop"
             element={auth ? <Shop user={user} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/orders"
+            element={auth ? <Orders user={user} /> : <Navigate to="/login" />}
           />
         </Routes>
       </div>

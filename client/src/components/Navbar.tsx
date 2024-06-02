@@ -24,6 +24,9 @@ const Navbar: React.FC<{ auth: any; onLogout: () => void }> = ({ auth, onLogout 
                   <Link className="nav-link" to="/shop">Shop</Link>
                 </li>
                 <li className="nav-item">
+                  <Link className="nav-link" to="/orders">Orders</Link>
+                </li>
+                <li className="nav-item">
                   <Link className="nav-link" to="/login" onClick={handleLogout}>Logout</Link>
                 </li>
               </>

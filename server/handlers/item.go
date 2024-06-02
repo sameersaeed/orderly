@@ -25,6 +25,7 @@ func CreateItemHandler(w http.ResponseWriter, r *http.Request) {
         item.ID = primitive.NewObjectID()
     }
     
+    // saving item to db
     ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
     defer cancel()
 

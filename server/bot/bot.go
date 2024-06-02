@@ -34,8 +34,8 @@ func HandleMessages() {
 			if err != nil {
 				fmt.Println("ERROR: could not fetch message from client:", err)
 			}
-			for _, m := range messages {
-				fmt.Println(m.Content)
+			if messages[0].Content != "" {
+				fmt.Println("LOG: new message received: ", messages[0].Content)
 			}
 		}
 	}

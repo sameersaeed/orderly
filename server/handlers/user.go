@@ -24,6 +24,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    // saving user info to db
     ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
     defer cancel()
 

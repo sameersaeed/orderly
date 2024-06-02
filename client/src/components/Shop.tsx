@@ -12,13 +12,34 @@ interface Item {
   price: number;
 }
 
+interface CartItem {
+  item: Item;
+  quantity: number;
+}
+
 const Shop: React.FC<{ user: any }> = ({ user }) => {
   const [items, setItems] = useState<Item[]>([]);
-  const [cart, setCart] = useState<Item[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Item>();
+  const [totalPrice, setTotalPrice] = useState(0);
 
   useEffect(() => {
+    // updating cart and total price from local storage
+    const cart = localStorage.getItem('cart');
+    if (cart) {
+      setCart(JSON.parse(cart));
+    }
+
+    const totalPrice = localStorage.getItem('totalPrice');
+    if (totalPrice) {
+      setTotalPrice(Number(totalPrice));
+    }
+  }
+  , []);
+
+  useEffect(() => {
+    // show toastr message after item action is performed and page refreshes
     switch (sessionStorage.getItem('itemActionPerformed')) {
       case 'edit':
         toastr.success('Item was updated successfully!');
@@ -49,36 +70,84 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
     }
   }, [user.Token]);
 
-  const addToCart = (item: Item) => {
-    setCart([...cart, item]);
+
+  const saveCartInfo = (cart: CartItem[]) => {
+    setCart(cart);
+    const totalPrice = cart.reduce((total, cartItem) => total + cartItem.quantity * cartItem.item.price, 0);
+    setTotalPrice(totalPrice);
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+    localStorage.setItem('totalPrice', totalPrice.toString());
   };
 
-  const removeCartItem = async (id: string) => {
-    try {
-      await axios.delete(`/items/${id}`, {
-        headers: { Authorization: `Bearer ${user.Token}` }
-      });
-      setItems(items.filter(item => item.id !== id));
+  const addToCart = (item: Item) => {
+    const existingItem = cart.find(cartItem => cartItem.item.id === item.id);
+    if (existingItem) {
+      const updatedCart = cart.map(cartItem =>
+        cartItem.item.id === existingItem.item.id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem
+      );
+      saveCartInfo(updatedCart);
     } 
-    catch (error) {
-      console.error('ERROR: could not remove item from cart:', error);
+    else {
+      const updatedCart = [...cart, { item, quantity: 1 }];
+      saveCartInfo(updatedCart);
+    }
+  };
+
+  const removeCartItem = (id: string) => {
+    const updatedCart = cart.filter(cartItem => cartItem.item.id !== id);
+    saveCartInfo(updatedCart);
+  };
+
+  const incrementCartItemQty = (id: string) => {
+    const updatedCart = cart.map(cartItem =>
+      cartItem.item.id === id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem
+    );
+    saveCartInfo(updatedCart);
+  };
+
+  const decrementCartItemQty = (id: string) => {
+    const existingItem = cart.find(cartItem => cartItem.item.id === id);
+    if (existingItem && existingItem.quantity > 1) {
+      const updatedCart = cart.map(cartItem =>
+        cartItem.item.id === id ? { ...cartItem, quantity: cartItem.quantity - 1 } : cartItem
+      );
+      saveCartInfo(updatedCart);
+    } 
+    else {
+      removeCartItem(id);
     }
   };
 
   const handleSubmit = async () => {
     try {
-      const orderDetails = cart.map(item => `${item.name}: ${item.price}`).join('\n');
-      const message = `Order details:\n${orderDetails}`;
-      await axios.post('/send', {
-        name: user.name,
-        email: user.Email,
-        message,
-        cart
-      });
+      const orderDetails = cart.map(cartItem => ({
+        item: cartItem.item.name,
+        quantity: cartItem.quantity,
+        price: cartItem.item.price,
+      }));
+
+      await axios.post(
+        `${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/createOrder`,
+        {
+          email: user.Email,
+          cart: orderDetails,
+          userId: user.id,
+          totalPrice: totalPrice,
+        },
+        {
+          headers: { Authorization: `Bearer ${user.Token}` },
+        }
+      );
+
+      // reset cart after order submission
+      setCart([]);
+      setTotalPrice(0);
+      localStorage.removeItem('cart');
+      localStorage.removeItem('totalPrice');
 
       toastr.success('Your order has successfully been sent for processing!');
-    } 
-    catch (error) {
+    } catch (error) {
       console.error('ERROR: could not send order:', error);
       toastr.error('ERROR: There was an issue submitting your order, please try again');
     }
@@ -123,7 +192,7 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
   const handleEditItem = async (item: Item) => {
     if (item.id) {
       try {
-        const response = await axios.put(
+        await axios.put(
           `${process.env.REACT_APP_HOST_URL}:${process.env.REACT_APP_SERVER_PORT}/editItem`,
           item,
           {
@@ -162,14 +231,14 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
       toastr.error('ERROR: There was an issue with deleting the item, please try again');
     }
   };
-  
+
   return (
     <div className="container mt-5">
       <h2>Items</h2>
-      <div className="row">
+      <div className="row row-cols-1 row-cols-md-2 g-4">
         {items?.map((item: Item) => (
-          <div key={item.id} className="col-md-4">
-            <div className="card mb-4 bg-dark text-light">
+          <div key={item.id} className="col">
+            <div className="card bg-dark text-light">
               {user.IsAdmin && (
                 <div className="position-absolute top-0 end-0">
                   <button className="btn btn-danger btn-sm me-2" onClick={() => handleDeleteItem(item.id)}>
@@ -202,18 +271,33 @@ const Shop: React.FC<{ user: any }> = ({ user }) => {
         <div className="mt-4">
           <h3>Cart</h3>
           <ul className="list-group">
-            {cart.map(item => (
-              <li key={item.id} className="list-group-item d-flex justify-content-between align-items-center">
-                {item.name}
-                <button className="btn btn-danger btn-sm" onClick={() => removeCartItem(item.id)}>
-                  Remove
-                </button>
+            {cart.map(cart => (
+              <li key={cart.item.id} className="list-group-item d-flex justify-content-between align-items-center">
+                {/* Updated cart item layout */}
+                <div className="d-flex justify-content-between align-items-center w-50">
+                  <span>{cart.item.name}</span>
+                  <span className="badge bg-primary rounded-pill mx-2">{cart.quantity}</span>
+                  <div>
+                    <button className="btn btn-sm btn-secondary me-2" onClick={() => incrementCartItemQty(cart.item.id)}>
+                      +
+                    </button>
+                    <button className="btn btn-sm btn-secondary" onClick={() => decrementCartItemQty(cart.item.id)}>
+                      -
+                    </button>
+                  </div>
+                </div>
+                <div className="w-50 text-end">
+                  ${Number((cart.item.price * cart.quantity).toFixed(2))}
+                </div>
               </li>
             ))}
           </ul>
-          <button className="btn btn-success mt-3" onClick={handleSubmit}>
-            Submit Order
-          </button>
+          <div className="mt-3">
+            <h5>Cart total: ${totalPrice.toFixed(2)}</h5>
+            <button className="btn btn-success" onClick={handleSubmit}>
+              Submit order
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,18 +1,17 @@
 package models
 
-import (
-	"gopkg.in/mgo.v2/bson"
-)
+import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Order struct {
-    ID       	bson.ObjectId 	`bson:"_id,omitempty"`
-    Email    	string        	`json:"email"`
-    Cart        []CartItem      `json:"cart"`
-    TotalPrice 	float64       	`json:"total_price"`
-    Message     string        	`json:"message,omitempty"`
+    OrderID     primitive.ObjectID 	`bson:"_id,omitempty" json:"orderID,omitempty"`
+    Email    	string        	    `json:"email"`
+    Cart        []CartItems         `json:"cart"`
+    UserID      primitive.ObjectID  `bson:"userID,omitempty" json:"userID,omitempty"`
+    TotalPrice  float64             `json:"totalPrice"`
 }
 
-type CartItem struct {
-    ItemID   bson.ObjectId `bson:"item_id,omitempty"`
-    Quantity int           `json:"quantity"`
+type CartItems struct {
+    ItemName    string  `json:"item"`
+    Quantity    int     `json:"quantity"`
+    Price       float64 `json:"price"`
 }
