@@ -7,5 +7,5 @@ import (
 var db *mongo.Database
 
 func SetDatabase(database *mongo.Database) {
-	db = database
+    db = database
 }

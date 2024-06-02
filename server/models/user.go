@@ -5,9 +5,10 @@ import (
 )
 
 type User struct {
-	ID       bson.ObjectId `bson:"_id,omitempty"`
-	Name     string        `bson:"name"`
-	Email    string        `bson:"email"`
-	Password string        `bson:"password"`
-	IsAdmin  bool          `bson:"isAdmin"`
+    ID       bson.ObjectId `bson:"_id,omitempty"`
+    Name     string        `bson:"name"`
+    Email    string        `bson:"email"`
+    Password string        `bson:"password"`
+    IsAdmin  bool          `bson:"isAdmin"`
+    Token    string        `bson:"token"` 
 }

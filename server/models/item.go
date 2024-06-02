@@ -5,8 +5,8 @@ import (
 )
 
 type Item struct {
-	ID          bson.ObjectId `bson:"_id,omitempty"`
-	Name        string        `bson:"name"`
-	Description string        `bson:"description"`
-	Price       float64       `bson:"price"`
+    ID          bson.ObjectId `bson:"_id,omitempty"`
+    Name        string        `bson:"name"`
+    Description string        `bson:"description"`
+    Price       float64       `bson:"price"`
 }
