@@ -1,3 +1,8 @@
+# Order Submission Tool
+
+A full stack CRUD app created using React + Golang. Customers can create and submit orders through the frontend, which are then sent to a private Discord channel where they can be processed by site administrators.
+
+
 # Setup steps
 
 To get the client up and running, you can navigate to `~/client` (where `~` is the project's root directory) and run: `npm start`
