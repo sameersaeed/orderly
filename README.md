@@ -1,6 +1,6 @@
-# Order Submission Tool
+# Orderly
 
-A full stack CRUD app created using React + Golang. Customers can create and submit orders through the frontend, which are then sent to a private Discord channel where they can be processed by site administrators.
+A full stack e-commerce app created using React + Golang. Customers can create and submit orders through the frontend, which are then sent to a private Discord channel where they can be processed by site administrators.
 
 
 # Setup steps
